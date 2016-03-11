@@ -82,6 +82,11 @@ $ docker images
 
 ### Build DB Container
 
+```
+
+$ docker build --rm -t devdb .
+
+```
 
 ### Build App Container
 

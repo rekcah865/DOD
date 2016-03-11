@@ -22,22 +22,39 @@ RUN useradd -u 3001 -s /bin/bash -d /u01/usr/oracle -g dba oracle
 RUN echo "oracle:oracle"|chapasswd
 ADD oracle_profile /u01/usr/oracle/.bash_profile
 
-## Oracle 11gR2 
+## Oracle 11gR2 Install
 RUN yum -y install oracle-rdbms-server-11gR2-preinstall perl unzip
 RUN mkdir -p /u01/source
 ADD p13390677_112040_Linux-x86-64_1of7.zip /tmp/p13390677_112040_Linux-x86-64_1of7.zip
 ADD p13390677_112040_Linux-x86-64_2of7.zip /tmp/p13390677_112040_Linux-x86-64_2of7.zip
 WORKDIR /u01/source
-RUN unzip /tmp/p13390677_112040_Linux-x86-64_1of7.zip && rm /tmp/p13390677_112040_Linux-x86-64_1of7.zip
+RUN unzip /tmp/p13390677_112040_Linux-x86-64_1of7.zip && rm /tmp/p13	390677_112040_Linux-x86-64_1of7.zip
 RUN unzip /tmp/p13390677_112040_Linux-x86-64_2of7.zip && rm /tmp/p13390677_112040_Linux-x86-64_2of7.zip
 RUN chown -R oracle:dba /u01/source/database
 USER oracle
 ADD 11204_db_install.rsp /tmp/11204_db_install.rsp
 RUN /u01/source/database/runInstaller -silent -force -waitforcompletion -responsefile /tmp/11204_db_install.rsp -ignoresysprereqs -ignoreprereq
-
 USER root
 RUN /u01/app/oraInventory/orainstRoot.sh
 RUN /u01/app/oracle/product/11.2.0/root.sh -silent
+
+## listener create
+USER oracle
+ADD ./11204_netca.rsp /tmp/11204_netca.rsp
+ENV ORACLE_HOME /u01/app/oracle/product/11.2.0
+ENV LD_LIBRARY_PATH /u01/app/oracle/product/11.2.0/lib
+RUN /u01/app/oracle/product/11.2.0/netca -silent -responseFile /tmp/netca.rsp
+
+## Create instance
+ADD ./create_inst.sh /tmp/create_inst.sh
+RUN chmod +x /tmp/create_inst.sh && /tmp/create_inst.sh
+
+## Supervisord
+RUN yum -y install python-setuptools
+ENV http_proxy=http://10.40.3.249:3128 
+ENV https_proxy=http://10.40.3.249:3128
+RUN easy_install supervisor
+ADD ./uniMon_supervisor.conf /etc/supervisor.conf
 
 ENTRYPOINT ["/usr/sbin/sshd", "-D"]
 
